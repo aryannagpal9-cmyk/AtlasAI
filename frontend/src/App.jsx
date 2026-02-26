@@ -503,6 +503,7 @@ function App() {
                         className="sidebar-right"
                     >
                         <DetailPanel
+                            key={selectedCard?.id || 'detail-panel'}
                             context={selectedCard}
                             onClose={() => setIsDrawerOpen(false)}
                             onResolve={handleResolveRisk}

@@ -33,7 +33,7 @@ const ExpandableThought = ({ thoughts }) => {
 };
 
 const DetailPanel = ({ context, onClose, onResolve, onPrepareAction, onSendChat, onApproveDraft }) => {
-    const [activeTab, setActiveTab] = useState('Intelligence');
+    const [activeTab, setActiveTab] = useState('Discussion');
     const [localChatInput, setLocalChatInput] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
     const [draftSent, setDraftSent] = useState(false);
