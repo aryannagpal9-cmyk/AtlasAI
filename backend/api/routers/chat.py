@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
-from backend.agents.chat import ChatAgent
-from backend.shared.logging import setup_logger
-from backend.api.services.broadcaster import broadcaster
+from agents.chat import ChatAgent
+from shared.logging import setup_logger
+from api.services.broadcaster import broadcaster
 
 logger = setup_logger("api.chat")
 router = APIRouter()

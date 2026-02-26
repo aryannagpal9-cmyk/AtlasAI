@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
-from backend.agents.interpreters import PreMeetingBriefAgent
+from shared.database import db_manager
+from shared.logging import setup_logger
+from agents.interpreters import PreMeetingBriefAgent
 from datetime import datetime
 
 logger = setup_logger("api.meetings")
@@ -39,7 +39,7 @@ async def get_meeting_brief(client_id: str):
         })
         
         # Trigger broadcast
-        from backend.api.services.broadcaster import broadcaster
+        from api.services.broadcaster import broadcaster
         await broadcaster.broadcast({
             "type": "meeting_brief_generated",
             "client_id": client_id

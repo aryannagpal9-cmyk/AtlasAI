@@ -1,6 +1,6 @@
 import asyncio
 from typing import AsyncGenerator
-from backend.shared.logging import setup_logger
+from shared.logging import setup_logger
 
 logger = setup_logger("sse.broadcaster")
 

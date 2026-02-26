@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from backend.shared.models import EventType, UrgencyLevel
-from backend.reasoning.uk_finance import UKFinanceLogic
+from shared.models import EventType, UrgencyLevel
+from reasoning.uk_finance import UKFinanceLogic
 
 class RiskClassifier:
     """Strategic advisor logic for risk classification. Thinking beyond simple thresholds."""

@@ -1,5 +1,5 @@
-from backend.shared.database import db_manager
-from backend.api.services.formatters import _drawer_title, _format_time, _format_date
+from shared.database import db_manager
+from api.services.formatters import _drawer_title, _format_time, _format_date
 
 async def _get_client_memory(client_id: str, context_query: str = "general") -> list:
     """Fetch recent behavioural memory items for a client (chronological, fast)."""

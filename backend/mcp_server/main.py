@@ -4,8 +4,8 @@ import json
 import re
 from typing import List, Dict, Any, Optional
 from mcp.server.fastmcp import FastMCP
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
+from shared.database import db_manager
+from shared.logging import setup_logger
 from datetime import datetime, timedelta, timezone
 
 try:
@@ -280,7 +280,7 @@ async def get_tax_position(client_id: str) -> Dict[str, Any]:
 
 # ─── MEMORY TOOLS ────────────────────────────────────────────
 
-from backend.shared.embeddings import generate_embedding
+from shared.embeddings import generate_embedding
 
 @mcp.tool()
 async def store_memory_item(client_id: str, content: str, source: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

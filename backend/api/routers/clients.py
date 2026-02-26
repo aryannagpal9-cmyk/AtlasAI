@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
+from shared.database import db_manager
+from shared.logging import setup_logger
 
 logger = setup_logger("api.clients")
 router = APIRouter()

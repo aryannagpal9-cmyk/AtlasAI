@@ -2,11 +2,11 @@ from fastapi import APIRouter, Request
 from datetime import datetime
 from fastapi.responses import StreamingResponse
 import asyncio
-from backend.shared.database import db_manager
-from backend.api.services.formatters import _event_to_text, _build_chips, _format_time, _format_date, _minutes_until
-from backend.api.services.drawer import _build_drawer_data, _build_meeting_drawer, _build_drawer_data_fast, _build_meeting_drawer_fast
-from backend.api.services.broadcaster import broadcaster
-from backend.shared.logging import setup_logger
+from shared.database import db_manager
+from api.services.formatters import _event_to_text, _build_chips, _format_time, _format_date, _minutes_until
+from api.services.drawer import _build_drawer_data, _build_meeting_drawer, _build_drawer_data_fast, _build_meeting_drawer_fast
+from api.services.broadcaster import broadcaster
+from shared.logging import setup_logger
 
 logger = setup_logger("api.stream")
 router = APIRouter()

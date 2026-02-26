@@ -1,13 +1,13 @@
 import asyncio
 from datetime import datetime, timezone
-from backend.reasoning.classifiers import RiskClassifier
-from backend.reasoning.workflows import intelligence_workflow
-from backend.shared.models import EventStatus, EventType
-from backend.api.services.custodian import LiveCustodianClient
-from backend.api.services.broadcaster import broadcaster
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
-from backend.mcp_server.main import fetch_comprehensive_market_intel
+from reasoning.classifiers import RiskClassifier
+from reasoning.workflows import intelligence_workflow
+from shared.models import EventStatus, EventType
+from api.services.custodian import LiveCustodianClient
+from api.services.broadcaster import broadcaster
+from shared.database import db_manager
+from shared.logging import setup_logger
+from mcp_server.main import fetch_comprehensive_market_intel
 
 logger = setup_logger("heartbeat")
 
@@ -55,7 +55,7 @@ async def run_heartbeat():
                 .select("content").eq("client_id", client_id).execute()
             memories = [m["content"] for m in memories_resp.data] if memories_resp.data else []
             
-            from backend.reasoning.classifiers import VulnerabilityAssessor
+            from reasoning.classifiers import VulnerabilityAssessor
             v_report = VulnerabilityAssessor.assess(client, memories)
             
             db_manager.update("clients", client_id, {

@@ -1,9 +1,9 @@
 import json
 import asyncio
 from typing import Dict, Any, List, Optional
-from backend.shared.logging import setup_logger
-from backend.shared.database import db_manager
-from backend.shared.config import settings
+from shared.logging import setup_logger
+from shared.database import db_manager
+from shared.config import settings
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 

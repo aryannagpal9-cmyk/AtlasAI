@@ -3,10 +3,10 @@ from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain.tools import StructuredTool
-from backend.shared.config import settings
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
-from backend.mcp_server.main import (
+from shared.config import settings
+from shared.database import db_manager
+from shared.logging import setup_logger
+from mcp_server.main import (
     search_market_news, 
     fetch_live_market_data, 
     get_client_portfolio_structure,

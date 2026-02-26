@@ -1,9 +1,9 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
-from backend.agents.interpreters import PreMeetingBriefAgent
-from backend.api.services.broadcaster import broadcaster
+from shared.database import db_manager
+from shared.logging import setup_logger
+from agents.interpreters import PreMeetingBriefAgent
+from api.services.broadcaster import broadcaster
 
 logger = setup_logger("proactor")
 brief_agent = PreMeetingBriefAgent()

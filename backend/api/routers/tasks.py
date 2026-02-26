@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Header, HTTPException, Depends
-from backend.reasoning.heartbeat import run_heartbeat
-from backend.reasoning.sentinel import run_sentinel
-from backend.reasoning.morning_brief import run_morning_analysis
-from backend.reasoning.proactor import run_proactive_briefing
-from backend.shared.config import settings
-from backend.shared.logging import setup_logger
+from reasoning.heartbeat import run_heartbeat
+from reasoning.sentinel import run_sentinel
+from reasoning.morning_brief import run_morning_analysis
+from reasoning.proactor import run_proactive_briefing
+from shared.config import settings
+from shared.logging import setup_logger
 
 logger = setup_logger("tasks")
 router = APIRouter(prefix="/tasks", tags=["Background Tasks"])

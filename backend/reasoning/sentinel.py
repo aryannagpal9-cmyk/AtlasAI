@@ -1,8 +1,8 @@
 import asyncio
 from datetime import datetime
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
-from backend.mcp_server.main import fetch_live_market_data, search_market_news
+from shared.database import db_manager
+from shared.logging import setup_logger
+from mcp_server.main import fetch_live_market_data, search_market_news
 
 logger = setup_logger("sentinel")
 
@@ -51,7 +51,7 @@ async def run_sentinel():
                     logger.warning(f"Abnormal market movement detected: {delta*100:.2f}%")
                     logger.warning(f"Headlines: {news_headlines}")
                     # Trigger immediate heartbeat
-                    from backend.reasoning.heartbeat import run_heartbeat
+                    from reasoning.heartbeat import run_heartbeat
                     await run_heartbeat()
         
         # 4. Store new snapshot with real data

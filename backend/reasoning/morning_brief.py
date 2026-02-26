@@ -1,12 +1,12 @@
 import asyncio
 from datetime import datetime, timezone
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
-from backend.reasoning.classifiers import RiskClassifier
-from backend.reasoning.workflows import intelligence_workflow
-from backend.shared.models import EventType, UrgencyLevel, EventStatus
-from backend.api.services.broadcaster import broadcaster
-from backend.mcp_server.main import fetch_comprehensive_market_intel
+from shared.database import db_manager
+from shared.logging import setup_logger
+from reasoning.classifiers import RiskClassifier
+from reasoning.workflows import intelligence_workflow
+from shared.models import EventType, UrgencyLevel, EventStatus
+from api.services.broadcaster import broadcaster
+from mcp_server.main import fetch_comprehensive_market_intel
 
 logger = setup_logger("morning_brief")
 

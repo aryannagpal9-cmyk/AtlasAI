@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
 import json
-from backend.shared.config import settings
-from backend.reasoning.workflows import intelligence_workflow
+from shared.config import settings
+from reasoning.workflows import intelligence_workflow
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -20,7 +20,7 @@ class PreMeetingBriefAgent:
 
     async def generate_brief(self, client_id: str, client_name: str) -> dict:
         # Optimization: Fetch memory and portfolio structure once, then call LLM
-        from backend.mcp_server.main import get_client_portfolio_structure, get_tax_position, retrieve_relevant_memory
+        from mcp_server.main import get_client_portfolio_structure, get_tax_position, retrieve_relevant_memory
         
         portfolio = await get_client_portfolio_structure(client_id)
         tax = await get_tax_position(client_id)
@@ -73,7 +73,7 @@ class MorningIntelligenceAgent:
     """Wrapper for backward compatibility, now using deterministic workflow."""
     async def generate_report(self, clients: list[dict]) -> dict:
         # Fetch market intel once
-        from backend.mcp_server.main import fetch_comprehensive_market_intel
+        from mcp_server.main import fetch_comprehensive_market_intel
         market_intel = await fetch_comprehensive_market_intel()
         return await intelligence_workflow.generate_morning_report(clients, market_intel)
 
@@ -107,7 +107,7 @@ class ProactiveVoiceAgent:
             ])
             return response.content.strip()
         except Exception as e:
-            from backend.shared.logging import setup_logger
+            from shared.logging import setup_logger
             logger = setup_logger("interpreters")
             logger.error(f"Proactive voice generation failed: {e}")
             return ""

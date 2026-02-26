@@ -2,11 +2,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from backend.shared.logging import setup_logger
-from backend.shared.config import settings
+from shared.logging import setup_logger
+from shared.config import settings
 
 # Import Routers
-from backend.api.routers import health, stream, clients, risks, meetings, drafts, chat, tasks
+from api.routers import health, stream, clients, risks, meetings, drafts, chat, tasks
 
 logger = setup_logger("api")
 

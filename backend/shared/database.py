@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
 from supabase import create_client, Client
-from backend.shared.config import settings
-from backend.shared.logging import setup_logger
+from shared.config import settings
+from shared.logging import setup_logger
 
 logger = setup_logger("db")
 

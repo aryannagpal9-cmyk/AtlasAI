@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
-from backend.agents.interpreters import RiskInterpretationAgent
+from shared.database import db_manager
+from shared.logging import setup_logger
+from agents.interpreters import RiskInterpretationAgent
 
 logger = setup_logger("api.risks")
 router = APIRouter()
