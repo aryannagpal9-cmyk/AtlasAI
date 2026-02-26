@@ -1,92 +1,43 @@
-# Technical Requirements Document (TRD) - Atlas Zero
+# Technical Requirements Document (TRD) - Atlas AI
 
-## 1. System Architecture
-Atlas Zero is built as a modular system of micro-services. The frontend consumes a unified intelligence feed from the FastAPI backend, which is continuously updated by the reasoning engine.
+## 1. Architecture Overview
+Atlas is a highly modular, decoupled, **serverless-ready** web application. It transitions from traditional background long-lived scheduling (like APScheduler) to stateless, external HTTP-triggered executions, optimizing for Vercel deployment.
 
-```mermaid
-graph TD
-    subgraph Frontend
-        React[React/Vite UI]
-    end
-    subgraph API_Layer
-        FastAPI[FastAPI Server]
-        SSE[SSE Stream]
-    end
-    subgraph Reasoning_Engine
-        Sentinel[5m Market Sentinel]
-        Heartbeat[30m Book Sweep]
-        Classifiers[Deterministic Classifiers]
-        Workflow[Intelligence Workflow]
-    end
-    subgraph Data_Sources
-        YF[Yahoo Finance]
-        DDG[DuckDuckGo News]
-    end
-    subgraph Storage
-        DB[(Supabase PostgreSQL)]
-        Vector[pgvector]
-    end
+### 1.1 Stack
+- **Frontend:** React (Vite), Framer Motion, Tailwind CSS
+- **Backend:** FastAPI (Python 3.10+), LangChain, Groq LLMs
+- **Tools Protocol:** Model Context Protocol (MCP) Server for tool registration
+- **Database:** Supabase (PostgreSQL with pgvector for embeddings)
+- **Deployment:** Vercel (Frontend & Serverless Backend)
 
-    React <-->|REST / SSE| FastAPI
-    FastAPI <--> DB
-    Sentinel -->|Scrape| YF
-    Sentinel -->|Log| DB
-    Heartbeat -->|Trigger| Classifiers
-    Classifiers -->|Raw Risk| Workflow
-    Workflow -->|Synthesize| IW[LLM Interpretation]
-    IW --> DB
-    Workflow -->|Search| DDG
-```
+## 2. Component Design
 
----
+### 2.1 The MCP Server (`backend/mcp_server`)
+All real-world database queries, API fetches, and side-effects are isolated via MCP.
+- `search_market_news`: Fetches live UK headlines using DuckDuckGo search (`ddgs`).
+- `fetch_live_market_data`: Extracts `yfinance` indices (FTSE 100/250).
+- `get_client_portfolio_structure`: Executes Supabase JSON queries to extract GBP exposure.
+- `retrieve_relevant_memory`: Performs vector similarity search on Supabase `client_memory`.
 
-## 2. Technical Stack
+### 2.2 The Reasoning Engine (`backend/reasoning`)
+Agentic workflows that process data but carry no long-lived state.
+- **Sentinel (`sentinel.py`)**: Designed to be triggered every 5 minutes by Vercel Cron. Checks live markets for extreme deviations.
+- **Heartbeat (`heartbeat.py`)**: Designed to be triggered every 30 minutes. Deep scans portfolios against recent memories.
+- **Proactor (`proactor.py`)**: The AI opinion generator. It translates data into the bold opinions seen in the Intelligence UI.
+- **Chat (`chat.py`)**: The interactive assistant bound to the UI drawer. Uses LangChain with memory context and drafts emails.
 
-| Layer | Technology |
-| :--- | :--- |
-| **Backend** | Python 3.11, FastAPI, Uvicorn |
-| **Database** | Supabase (PostgreSQL), `pgvector` for memory |
-| **AI Reasoning** | LangChain, ChatGroq (Llama-3 models) |
-| **Scheduling** | APScheduler (In-process) |
-| **Data Scraping** | `yfinance`, `duckduckgo-search` |
-| **Frontend** | React 18, Vite, Tailwind CSS, Framer Motion |
-| **Real-time** | Server-Sent Events (SSE) for stream updates |
+### 2.3 The HTTP API (`backend/api/routers`)
+- **Stateless Routing**: `/tasks/sentinel` and `/tasks/heartbeat` securely await triggers (via configurable headers like `CRON_SECRET`).
+- **SSE Stream (`/stream/live`)**: Server-Sent Events utilizing PostgreSQL listen/notify for pushing new hunches dynamically to the React client.
+- **Live Strip (`/live-strip`)**: Provides real-time metrics and dynamic DDGS-cached news to power the UI ticker.
 
----
+## 3. Data Model (Supabase)
+- `clients`: ID, Name, Vulnerability Status, Metadata
+- `portfolios`: Client relation, Asset tickers, Asset class mapping
+- `client_memory`: Vectorized semantic long-term memory entries created when an adviser flags a conversation topic.
+- `risk_events`: The "Hunch" output table. Polled by the UI stream. Stores classification and proactive AI interpretations.
 
-## 3. Core Intelligence Engines
-
-### 3.1 Market Sentinel (5m Cycle)
-- **Purpose**: Detect abnormal UK market volatility.
-- **Logic**: Compares current FTSE 100/250 values against the last stored snapshot.
-- **Trigger**: If intraday delta > 2%, it triggers an immediate global `Heartbeat` sweep.
-
-### 3.2 Heartbeat Engine (30m Cycle)
-- **Purpose**: Strategic client book review.
-- **Logic**:
-    1. Fetches global market context (Sectors, Indices, Headlines).
-    2. Performs a "Vulnerability Assessment" (FCA-aligned) based on client life events.
-    3. Runs deterministic classifiers across all client portfolios.
-- **Classifiers**:
-    - `MarketRisk`: Concentration (>30% in one sector) + Performance sensitivity.
-    - `TaxOpportunity`: ISA remaining allowance + Cash balance check.
-    - `PensionAllowance`: Tapering detection for high earners (£200k+).
-    - `ComplianceExposure`: Drift from target risk score.
-
----
-
-## 4. Database Schema Highlights
-
-- **`risk_events`**: Append-only log of detected risks. Stores `deterministic_classification` (JSON) and `ai_interpretation` (JSON).
-- **`behavioural_memory`**: Client-specific logs with `vector(384)` embeddings for semantic retrieval via `match_memory` RPC.
-- **`market_snapshots`**: Time-series data of UK sector performance used for delta analysis.
-- **`action_logs`**: Immutable audit trail of every advisor decision (Approve, Reject, Edit).
-
----
-
-## 5. API Architecture
-
-- **`GET /stream`**: The primary data source for the advisor dashboard. Aggregates risks, meetings, and system logs into a chronological feed.
-- **`GET /stream/live`**: SSE endpoint that notifies the frontend of new intelligence events.
-- **`GET /live-strip`**: Aggregated market and book-health metrics for the top header.
-- **`POST /chat`**: Direct interface to Atlas for ad-hoc book querying.
+## 4. Security & Compliance
+- Read/Write operations on Supabase use the Service Role Key for backend administration.
+- CORS is strictly governed by `VITE_API_URL` origins.
+- Groq requests apply safe token maximums and strictly instructed system prompts to avoid API cost leaks.

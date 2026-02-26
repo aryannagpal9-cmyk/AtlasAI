@@ -1,110 +1,65 @@
-# API Reference - Atlas Zero Intelligence Endpoints
+# Atlas AI: API Documentation
 
-This document details the core REST and SSE endpoints that power the Atlas Zero Advisory Desktop.
+Atlas uses a modular REST API built with FastAPI. It handles synchronous action requests, asynchronous background triggers (Cron), and Server-Sent Events (SSE) for modern real-time capabilities.
 
-## 1. Intelligence Stream
-
-### `GET /stream`
-The primary endpoint for the advisor dashboard. Aggregates all open risks, upcoming meetings, drafted actions, and system logs into a chronological feed.
-
-**Query Parameters:**
-- `filter` (string): Options `all`, `risk`, `meeting`, `draft`.
-
-**Response Example:**
-```json
-{
-  "stream": [
-    {
-      "id": "uuid",
-      "type": "atlas",
-      "text": "FTSE 100 drop impacting high-exposure clients.",
-      "timestamp": "10:30 AM",
-      "cards": [
-        {
-          "id": "card-uuid",
-          "type": "market_risk",
-          "client": "John Doe",
-          "impact": "Portfolio concentrated in Energy sector (-4%).",
-          "urgency": "high"
-        }
-      ]
-    },
-    {
-      "id": "hb-uuid",
-      "type": "heartbeat",
-      "text": "Completed book sweep: 45 portfolios scanned, 2 risks found.",
-      "timestamp": "10:00 AM"
-    }
-  ],
-  "tabs": [
-    { "key": "all", "label": "All", "count": 12, "highCount": 2 },
-    { "key": "risk", "label": "Risks", "count": 4, "highCount": 2 }
-  ]
-}
-```
-
-### `GET /stream/live` (SSE)
-A Server-Sent Events endpoint that notifies the frontend of new intelligence events in real-time.
+## 1. System & Authentication
+- **Base URL:** Defined via `VITE_API_URL` (Frontend) and deployed domain (Backend).
+- **Authentication:** Currently open for internal MVP testing. Background tasks require an `x-vercel-cron` header matching `CRON_SECRET`.
 
 ---
 
-## 2. Market & Book Health
+## 2. Intelligence Streaming
+
+### `GET /stream/live`
+- **Description:** Server-Sent Events (SSE) endpoint connecting the frontend to the database's `LISTEN/NOTIFY` channels.
+- **Returns:** Real-time JSON payloads containing UI-ready "Cards" whenever the Intelligence Engine registers a new event.
 
 ### `GET /live-strip`
-Returns real-time market data (via `yfinance`) and book-wide metrics for the scrolling header.
-
-**Response Example:**
-```json
-{
-  "ftse_100": 7945.2,
-  "ftse_250": 19230.5,
-  "sectors": {
-    "Financials": -0.012,
-    "Energy": 0.005,
-    "Technology": -0.021
-  },
-  "clients_impacted": 8,
-  "open_risks": 4,
-  "meetings_today": 3
-}
-```
-
-### `GET /heartbeat-status`
-Returns the status of the background reasoning engine.
-
-**Response Example:**
-```json
-{
-  "last_run_text": "12 minutes ago",
-  "next_run_text": "in 18 minutes",
-  "status": "idle"
-}
-```
+- **Description:** Powers the dashboard header and the scrolling News Ticker.
+- **Logic:** Fetches the latest `market_snapshots`. Reaches out to DuckDuckGo (cached in memory for 5 minutes) to grab live UK financial headlines.
+- **Returns:**
+  ```json
+  {
+    "ftse_100": 8021.5,
+    "sectors": {"Technology": -0.05 ...},
+    "news": ["UK Tech Plummets", "FCA releases new guidance...", "Inflation holds steady"]
+  }
+  ```
 
 ---
 
-## 3. Client Context & Actions
+## 3. Background Task Triggers (Vercel Cron)
 
-### `GET /clients/{id}/portfolio`
-Returns the deep asset-allocation structure of a specific client.
+These endpoints run the heavy-lifting AI agents. They hold no internal schedules, operating purely when pinged.
 
-### `GET /clients/{id}/memory`
-Retrieves behavioural anchors and historical meeting context via vector similarity search.
+### `GET /tasks/sentinel`
+- **Description:** Triggers the fast, 5-minute Market Sentinel to watch for rapid market deviations.
+- **Header Required:** `x-vercel-cron: <CRON_SECRET>`
 
-### `POST /drafts/{id}/approve`
-Approves a drafted AI action (e.g., email) and moves it to the audit log.
+### `GET /tasks/heartbeat`
+- **Description:** Triggers the deep, 30-minute processing loop that checks portfolios against long-term semantic memory.
+- **Header Required:** `x-vercel-cron: <CRON_SECRET>`
+
+### `GET /tasks/morning-brief`
+- **Description:** Compiles the daily `morning_intelligence` macro-economic brief.
+- **Header Required:** `x-vercel-cron: <CRON_SECRET>`
 
 ---
 
-## 4. Reasoning Interface
+## 4. Chat & Proactor Actions
 
 ### `POST /chat`
-Sends a message to the Atlas Brain for ad-hoc book querying or research.
-
-**Request Payload:**
-```json
-{
-  "message": "Which clients are most exposed to the recent Energy sector drop?",
-  "history": []
-}
-```
+- **Description:** The primary conduit bridging the UI Drawer's Discussion tab with the robust LangChain reasoning agents.
+- **Body:**
+  ```json
+  {
+    "message": "User input text",
+    "history": [{"role": "assistant", "content": "..."}],
+    "context": {
+      "client_id": "uuid",
+      "risk_event_id": "uuid",
+      "action": "generate_draft" // Special flag to trigger action execution
+    }
+  }
+  ```
+- **Returns:** Iterative NDJSON stream of the Proactor's thoughts and ultimate text chunks to render the ChatGPT-style "Thinking" UI.

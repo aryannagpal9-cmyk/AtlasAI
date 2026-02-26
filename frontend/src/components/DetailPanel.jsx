@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Activity, Zap, CheckCircle, Send, Target, BarChart3, Clock, Brain, TrendingDown, Globe, Users, ChevronDown, ChevronRight, FileText, Mail } from 'lucide-react';
+import { X, Shield, Activity, Zap, CheckCircle, Send, Target, BarChart3, Clock, Brain, TrendingDown, Globe, Users, ChevronDown, ChevronRight, FileText, Mail, Star, List, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -57,12 +57,50 @@ const DetailPanel = ({ context, onClose, onResolve, onPrepareAction, onSendChat,
         const consequence = d.consequence;
         const clientName = context.client || 'this client';
 
-        if (proactive || headline) {
+        if (proactive || headline || d.meetingContext) {
             let fullMessage = '';
-            if (headline) fullMessage += `**${headline}**\n\n`;
-            if (proactive) fullMessage += proactive + '\n\n';
-            if (consequence) fullMessage += `> ⚠️ **If ignored:** ${consequence}\n\n`;
-            fullMessage += `---\n\nI can draft a proactive communication to **${clientName}** right now. Just click **"Take Action"** below, or ask me anything about this risk.`;
+            const isMeeting = context.type === 'meeting_brief';
+
+            if (isMeeting && d.meetingContext) {
+                fullMessage += `## Advisory Briefing: ${clientName}\n\n`;
+                if (d.meetingContext.priorityTopic) {
+                    fullMessage += `### 🎯 Priority Strategic Topic\n**${d.meetingContext.priorityTopic}**\n\n`;
+                }
+                if (proactive) {
+                    fullMessage += `### 💡 Strategic Summary\n${proactive}\n\n`;
+                }
+
+                if (d.meetingContext.agenda && d.meetingContext.agenda.length > 0) {
+                    fullMessage += `### 📋 Suggested Agenda\n`;
+                    d.meetingContext.agenda.forEach(item => {
+                        fullMessage += `- ${item}\n`;
+                    });
+                    fullMessage += `\n`;
+                }
+
+                if (d.meetingContext.taxes && d.meetingContext.taxes.length > 0) {
+                    fullMessage += `### ⚖️ Tax & Alpha Opportunities\n`;
+                    d.meetingContext.taxes.forEach(tax => {
+                        fullMessage += `- ${tax}\n`;
+                    });
+                    fullMessage += `\n`;
+                }
+
+                if (d.meetingContext.compliance && d.meetingContext.compliance.length > 0) {
+                    fullMessage += `### ⚠️ Compliance Reminders\n`;
+                    d.meetingContext.compliance.forEach(comp => {
+                        fullMessage += `- ${comp}\n`;
+                    });
+                    fullMessage += `\n`;
+                }
+
+                fullMessage += `---\n\nI have prepared the tactical data above for your meeting. Click **"Take Action"** to generate a detailed meeting checklist and tactical agenda for the discussion.`;
+            } else {
+                if (headline) fullMessage += `**${headline}**\n\n`;
+                if (proactive) fullMessage += proactive + '\n\n';
+                if (consequence) fullMessage += `> ⚠️ **If ignored:** ${consequence}\n\n`;
+                fullMessage += `---\n\nI can draft a proactive communication to **${clientName}** right now. Just click **"Take Action"** below, or ask me anything about this risk.`;
+            }
 
             setChatHistory([{
                 id: `proactive-${Date.now()}`,
@@ -141,11 +179,14 @@ const DetailPanel = ({ context, onClose, onResolve, onPrepareAction, onSendChat,
         setActiveTab('Discussion');
         const clientName = context.client || 'the client';
         const headline = d.headline || d.title || 'the identified risk';
+        const isMeeting = context.type === 'meeting_brief';
 
         // Add a user-like system message
         setChatHistory(prev => [...prev, {
             role: 'user',
-            content: `Draft a proactive client communication for ${clientName} regarding ${headline}.`
+            content: isMeeting
+                ? `Prepare a detailed meeting brief and tactical checklist for my meeting with ${clientName}.`
+                : `Draft a proactive client communication for ${clientName} regarding ${headline}.`
         }]);
 
         const assistantMsgId = `draft-${Date.now()}`;
@@ -155,7 +196,7 @@ const DetailPanel = ({ context, onClose, onResolve, onPrepareAction, onSendChat,
             content: '',
             thoughts: [],
             isStreaming: true,
-            isDraft: true
+            isDraft: !isMeeting // Meeting prep isn't a "draft" to send, it's advisor info
         }]);
 
         const chatContext = {
@@ -163,15 +204,19 @@ const DetailPanel = ({ context, onClose, onResolve, onPrepareAction, onSendChat,
             client_pname: context.client,
             risk_event_id: riskId,
             case_type: context.type,
-            action: 'generate_draft'
+            action: isMeeting ? 'prepare_meeting' : 'generate_draft'
         };
 
         try {
+            const prompt = isMeeting
+                ? `Prepare a strategic briefing for my upcoming meeting with ${clientName}. Include a tactical checklist, key talking points, and advice on how to handle potential concerns based on their portfolio: ${d.meetingContext?.portfolioPerformance || ''}.`
+                : `Generate a professional client communication draft for ${clientName} about this risk: ${headline}. ${d.proactive_thought || ''}. Include a subject line and body. Format it clearly with **Subject:** and **Body:** sections.`;
+
             const res = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: `Generate a professional client communication draft for ${clientName} about this risk: ${headline}. ${d.proactive_thought || ''}. Include a subject line and body. Format it clearly with **Subject:** and **Body:** sections.`,
+                    message: prompt,
                     history: chatHistory,
                     context: chatContext
                 })
@@ -349,6 +394,84 @@ const DetailPanel = ({ context, onClose, onResolve, onPrepareAction, onSendChat,
                     <DraftContent context={context} drawerData={d} />
                 ) : (
                     <>
+                        {/* Meeting Context Specific Render */}
+                        {d.meetingContext && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 24 }}>
+                                {/* Priority Topic */}
+                                {d.meetingContext.priorityTopic && (
+                                    <section>
+                                        <SectionTitle icon={<Star size={13} color="#f79009" />} label="Priority Strategic Topic" />
+                                        <p style={{ fontSize: 12, color: '#101828', fontWeight: 600, lineHeight: 1.6, background: '#fffaf0', padding: 14, borderRadius: 10, border: '1px solid #fedf89', margin: 0 }}>
+                                            {d.meetingContext.priorityTopic}
+                                        </p>
+                                    </section>
+                                )}
+
+                                {/* Portfolio Performance & Assets */}
+                                {(d.meetingContext.portfolioPerformance || (d.meetingContext.keyAssets && d.meetingContext.keyAssets.length > 0)) && (
+                                    <section>
+                                        <SectionTitle icon={<BarChart3 size={13} color="#1570ef" />} label="Portfolio & Standing" />
+                                        {d.meetingContext.portfolioPerformance && (
+                                            <p style={{ fontSize: 12, color: '#344054', lineHeight: 1.6, marginBottom: 12, fontWeight: 500 }}>
+                                                {d.meetingContext.portfolioPerformance}
+                                            </p>
+                                        )}
+                                        {d.meetingContext.keyAssets && d.meetingContext.keyAssets.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                {d.meetingContext.keyAssets.map((asset, i) => (
+                                                    <span key={i} style={{ padding: '6px 10px', background: '#f0f9ff', color: '#026aa2', fontSize: 10, fontWeight: 700, borderRadius: 6, border: '1px solid #b9e6fe' }}>
+                                                        {asset}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
+                                )}
+
+                                {/* Tax Opportunities */}
+                                {d.meetingContext.taxes && d.meetingContext.taxes.length > 0 && (
+                                    <section>
+                                        <SectionTitle icon={<Activity size={13} color="#12b76a" />} label="Tax & Allowances" />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {d.meetingContext.taxes.map((tax, i) => (
+                                                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: '#475467', alignItems: 'center', background: '#ecfdf3', padding: '10px 12px', borderRadius: 8, border: '1px solid #abefc6' }}>
+                                                    <CheckCircle size={12} color="#12b76a" />
+                                                    <span style={{ fontWeight: 600, color: '#027a48', lineHeight: 1.4 }}>{tax}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Suggested Agenda */}
+                                {d.meetingContext.agenda && d.meetingContext.agenda.length > 0 && (
+                                    <section>
+                                        <SectionTitle icon={<List size={13} color="#667085" />} label="Suggested Agenda" />
+                                        <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: '#344054', lineHeight: 1.6, fontWeight: 500 }}>
+                                            {d.meetingContext.agenda.map((item, i) => (
+                                                <li key={i} style={{ marginBottom: 6 }}>{item}</li>
+                                            ))}
+                                        </ul>
+                                    </section>
+                                )}
+
+                                {/* Compliance Reminders */}
+                                {d.meetingContext.compliance && d.meetingContext.compliance.length > 0 && (
+                                    <section>
+                                        <SectionTitle icon={<AlertCircle size={13} color="#d92d20" />} label="Compliance Actions required" />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {d.meetingContext.compliance.map((comp, i) => (
+                                                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: '#b42318', alignItems: 'center', background: '#fef3f2', padding: '10px 12px', borderRadius: 8, border: '1px solid #fecdca' }}>
+                                                    <AlertCircle size={12} color="#d92d20" style={{ flexShrink: 0 }} />
+                                                    <span style={{ fontWeight: 600, lineHeight: 1.4 }}>{comp}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+                            </div>
+                        )}
+
                         {/* Portfolio Allocation */}
                         {d.portfolio && d.portfolio.length > 0 && (
                             <section>

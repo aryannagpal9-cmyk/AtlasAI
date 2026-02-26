@@ -1,59 +1,111 @@
-# Architecture Guide - Atlas Zero
+# Atlas AI: System Architecture
 
-## 1. The Proactive Intelligence Loop
-Atlas Zero is designed for "Anticipatory Advisory." The architecture is centered around a continuous data loop that converts raw market and portfolio state into actionable advisor intelligence.
+Atlas AI is built fundamentally around the concept of a **Proactive Agentic Loop**, transitioning the traditional prompt-response AI model into a continuous, world-aware background worker.
 
-### 1.1 Temporal Engines
-The system operates on two primary temporal cycles:
+## 1. High-Level Macro Architecture
 
-1.  **The Sentinel (5m)**:
-    - **Trigger**: High-frequency interval.
-    - **Action**: Scrapes `yfinance` for FTSE 100/250 and sector performance.
-    - **Logic**: If intraday volatility exceeds 2%, it triggers an *Out-of-Band* Heartbeat sweep.
-
-2.  **The Heartbeat (30m)**:
-    - **Trigger**: Scheduled interval or Sentinel override.
-    - **Action**: Performs a complete book review across all clients.
-    - **Logic**: Runs deterministic classifiers to flag risks (Tax, Market, Compliance).
-
-### 1.2 Data Flow: Detection to Visualization
+The architecture is fully decoupled, event-driven, and Serverless-ready.
 
 ```mermaid
 graph TD
-    subgraph Data_Acquisition
-        S[Sentinel] -->|Volatility| M[Market Snapshots]
-        H[Heartbeat] -->|State Scan| P[Portfolio State]
+    classDef frontend fill:#fcfcfd,stroke:#eaecf0,stroke-width:1px,color:#101828;
+    classDef backend fill:#f8f9fb,stroke:#d0d5dd,stroke-width:1px,color:#101828;
+    classDef agent fill:#f9f5ff,stroke:#e9d7fe,stroke-width:1px,color:#6941c6;
+    classDef external fill:#fef3f2,stroke:#fecdca,stroke-width:1px,color:#b42318;
+    classDef db fill:#ecfdf3,stroke:#a6f4c5,stroke-width:1px,color:#027a48;
+
+    subgraph User_Interface ["Frontend (React/Vite)"]
+        Dashboard[Adviser Dashboard]:::frontend
+        StreamUI[Intelligence Stream]:::frontend
+        DrawerUI[Proactive Discussion Drawer]:::frontend
+        TickerUI[Live News Ticker]:::frontend
     end
 
-    subgraph Intelligence_Layer
-        M & P --> RC[Risk Classifiers]
-        RC -->|Raw Finding| IW[Intelligence Workflow]
-        IW -->|Semantic Retrieval| MEM[Behavioural Memory]
-        IW -->|LLM Synthesis| AI[AI Interpretation]
+    subgraph API_Gateway ["Backend (FastAPI)"]
+        StreamAPI[SSE Stream Router]:::backend
+        ChatAPI[Chat & Draft Router]:::backend
+        TasksAPI[Tasks/Cron Router]:::backend
+        LiveStripAPI[Live Strip Router]:::backend
     end
 
-    subgraph Visualization_Layer
-        AI -->|Insert| RE[Risk Events Table]
-        RE -->|SSE Signal| APP[React Stream UI]
-        APP -->|Context Drawer| DP[Detail Panel]
+    subgraph Intelligence_Engine ["Reasoning Logic"]
+        Heartbeat[Heartbeat Agent]:::agent
+        Sentinel[Sentinel Agent]:::agent
+        Proactor[Proactive Drafting Agent]:::agent
     end
+
+    subgraph MCP_Layer ["Model Context Protocol (MCP)"]
+        Tools[Live Search & DB Tools]:::backend
+    end
+
+    subgraph Storage ["Supabase PostgreSQL"]
+        DB[(Atlas Database)]:::db
+        Vectors[(Vector Memories)]:::db
+    end
+
+    subgraph External_World ["External Data"]
+        DDG((DuckDuckGo News)):::external
+        YF((Yahoo Finance)):::external
+        LLM((Groq LLM)):::external
+    end
+
+    %% Flow connections
+    VercelCron((Vercel Cron)) -.-> |HTTP GET| TasksAPI
+    TasksAPI --> |Triggers| Heartbeat
+    TasksAPI --> |Triggers| Sentinel
+
+    Heartbeat --> |Calls| MCP_Layer
+    Sentinel --> |Calls| MCP_Layer
+    Proactor <--> |Calls| MCP_Layer
+
+    MCP_Layer --> |Direct Queries| DB
+    MCP_Layer --> |Similarity Search| Vectors
+    MCP_Layer --> |Fetch| DDG
+    MCP_Layer --> |Fetch| YF
+
+    Heartbeat --> |Generates| DB
+    Sentinel --> |Generates| DB
+
+    DB -.-> |PostgreSQL LISTEN/NOTIFY| StreamAPI
+    StreamAPI --> |SSE Updates| StreamUI
+
+    Dashboard --> |Fetches| LiveStripAPI
+    LiveStripAPI --> |Fetches| DDG
+    LiveStripAPI --> |Fetches| DB
+    LiveStripAPI --> |Populates| TickerUI
+
+    DrawerUI <--> |HTTP POST| ChatAPI
+    ChatAPI <--> |Invokes| Proactor
+    Proactor <--> |Prompts| LLM
 ```
 
----
+## 2. The Proactive Discussion Flow
 
-## 2. Intelligence Workflow (The Brain)
-Unlike traditional agentic systems that can be slow or non-deterministic, Atlas Zero uses a **Linear Intelligence Pipeline**:
+Unlike standard chat, Atlas acts first when the adviser opens a client's risk drawer.
 
-1.  **Deterministic Flagging**: A Python-based classifier detects a hard rule violation (e.g., "ISA Allowance < £100").
-2.  **Context Assembly**: The system automatically retrieves relevant client memory (via vector search) and the latest market news.
-3.  **LLM Interpretation**: A single, high-speed LLM call (Groq/Llama-3) synthesizes the "Strategic Headline" and "Consequence if Ignored."
-4.  **Action Dispatch**: The interpreted event is pushed to the UI, accompanied by a drafted email or meeting brief.
+```mermaid
+sequenceDiagram
+    participant Adviser
+    participant Frontend
+    participant AtlasDB
+    participant Proactor
 
----
+    AtlasDB->>Frontend: Stream Pushes High-Urgency "Hunch"
+    Adviser->>Frontend: Clicks on Risk Card
+    Frontend->>Frontend: Opens Drawer & Auto-populates Proactive Message
+    Adviser->>Frontend: Reads "I can generate a draft" message
+    Adviser->>Frontend: Clicks "Take Action"
+    Frontend->>Proactor: POST /chat {action: "generate_draft"}
+    Proactor->>AtlasDB: Fetch Client Memory & Portfolio
+    Proactor-->>Frontend: Stream Generated Draft
+    Frontend-->>Adviser: Displays Draft Inline
+    Adviser->>Frontend: Clicks "Send to Client"
+    Frontend->>AtlasDB: Log Communication to Memory
+```
 
-## 3. Compliance & Auditability
-Every piece of intelligence in Atlas Zero is traceable and immutable.
+## 3. Serverless Extensibility
 
-- **Immutable Snapshots**: Each `risk_event` is linked to a `portfolio_snapshot_id` and a `market_snapshot_id`. This allows an advisor to see exactly what the market and client state looked like at the moment the risk was detected.
-- **Decision Tracking**: The `action_logs` table records every advisor interaction (Approve, Reject, Dismiss) with an associated timestamp and user ID, providing a robust compliance trail.
-- **Deterministic Reasoning**: By separating *detection* (Python) from *interpretation* (AI), we ensure that core risk logic is 100% reliable and auditable.
+By removing internal loops (e.g., `apscheduler`), Atlas's core reasoning functions are pure, parameterized scripts exposed via FastAPI routers (`/tasks/heartbeat`). This allows:
+- **Zero-Cost Scaling:** The server scales to zero when no background tasks or advisers are active.
+- **Micro-billing:** Vercel only charges for the exact compute seconds it takes Groq to process the Heartbeat.
+- **Disaster Recovery:** A failed cron run doesn't crash a persistent process; the next HTTP trigger simply retries cleanly.

@@ -83,14 +83,16 @@ class ChatAgent:
         4. Use horizontal rules (---) or headers to separate distinct sections (e.g., Market Context vs. Client Impact).
         5. Keep paragraphs short and scannable.
         
-        DRAFT GENERATION:
-        When asked to draft a client communication:
-        1. Use the client's name and risk context to write a professional, empathetic email.
-        2. Structure with clear **Subject:** and **Body:** sections.
-        3. The tone should be reassuring but proactive — you are a trusted advisor.
-        4. Reference specific portfolio data, market conditions, and past behavioral patterns.
-        5. Keep it concise — 3-4 short paragraphs max.
-        6. If asked to refine or modify a draft, make the specific changes requested while keeping the rest intact.
+        DRAFT GENERATION & MEETING PREP:
+        1. When context 'action' is 'generate_draft' (CLIENT COMMUNICATION):
+           - Write a professional, empathetic email to the client.
+           - Structure with **Subject:** and **Body:**.
+           - Tone: Reassuring, external, proactive.
+        2. When context 'action' is 'prepare_meeting' (ADVISOR BRIEFING):
+           - Write an internal, tactical briefing for the financial advisor.
+           - Focus on: Strategic Agenda, Key Alpha/Tax opportunities, potential client objections, and behavioral prep.
+           - DO NOT use "Dear [Client]", use "Advisor Briefing: [Client]".
+           - Tone: Strategic, internal, analytical.
         """
 
     async def stream_response(self, message: str, history: List[Dict[str, str]] = None, context: Dict[str, Any] = None):
@@ -121,8 +123,13 @@ class ChatAgent:
                 ctx_str += f"Current Client Name: {context['client_pname']}\n"
             if "risk_event_id" in context:
                 ctx_str += f"Current Risk/Case ID: {context['risk_event_id']}\n"
-            if context.get("action") == "generate_draft":
-                ctx_str += "ACTION: The advisor has clicked 'Take Action'. Generate a professional client communication draft.\n"
+            
+            action = context.get("action")
+            if action == "generate_draft":
+                ctx_str += "ACTION: The advisor clicked 'Take Action' for a RISK. Generate a client communication draft.\n"
+            elif action == "prepare_meeting":
+                ctx_str += "ACTION: The advisor clicked 'Take Action' for a MEETING. Prepare an internal strategic briefing for the advisor.\n"
+                
             input_text = ctx_str + input_text
 
         # Format history

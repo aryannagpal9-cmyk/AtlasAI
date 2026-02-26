@@ -1,52 +1,80 @@
-# Deployment Guide: Atlas Zero on Vercel
+# Atlas AI: Deployment Guide (Vercel Serverless)
 
-Atlas Zero is designed to be deployed as two separate services (Frontend and Backend) within a single repository. This ensures the frontend stays fast and the backend reasoning engines are managed by Vercel Cron.
+Atlas is fully decoupled and optimized to run entirely on serverless infrastructure. Instead of managing long-running background processes or traditional Ubuntu VMs, you push code directly to Vercel.
 
-## 1. Backend Deployment (FastAPI)
+## 1. Prerequisites
 
-### Setup
-1. Create a new project in Vercel.
-2. Link your repository.
-3. **Important**: Set the **Root Directory** to `backend`.
-4. Select **Python** as the framework (Vercel should detect this automatically via `requirements.txt`).
+1. A Vercel Account linked to your GitHub repository.
+2. A Supabase project (providing the PostgreSQL database).
+3. Groq API Keys.
 
-### Environment Variables
-Configure the following in the Vercel Dashboard:
-- `SUPABASE_URL`: Your Supabase project URL.
-- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key.
-- `GROQ_API_KEY`: Groq API key for LLM reasoning.
-- `OPENAI_API_KEY`: OpenAI API key for embeddings.
-- `CORS_ORIGINS`: The URL of your **Frontend** deployment (e.g., `https://atlas-zero-frontend.vercel.app`).
-- `CRON_SECRET`: A secret string (e.g., `atlas_cron_secret_123`) that matches the one in your `backend/api/routers/tasks.py` (or set a new one).
+## 2. Serverless Backend Configuration
 
-### Cron Jobs
-Vercel will automatically detect the cron schedules in `backend/vercel.json`. You can monitor these in the **Cron** tab of your project settings.
+We removed `apscheduler` so the Python application operates dynamically.
+
+### Vercel App Setup (Backend)
+1. In Vercel, import the `backend/` directory of the repository (or the root and define `backend` as the Root Directory).
+2. The framework preset is **Other**.
+3. Vercel utilizes the `vercel.json` file automatically:
+```json
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "api/main.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "api/main.py"
+        }
+    ]
+}
+```
+
+### Environment Variables (Vercel Backend Settings)
+Add these accurately to the Vercel dashboard:
+- `SUPABASE_URL`
+- `SUPABASE_KEY` (Service role key)
+- `GROQ_API_KEY`
+- `CRON_SECRET` (A strong random string. Example: `ab849hf02hf893hf`)
+
+## 3. Configuring Auto-Reasoning (Vercel Cron)
+
+Because Atlas is serverless, the AI agents are woken up by HTTP requests rather than internal loops.
+
+Next to the `backend/vercel.json`, Vercel reads a `vercel.json` (or you can merge them) configuration for cron.
+Ensure your cron config looks like this in the deployed environment to trigger the actual intelligence:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/tasks/sentinel",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/tasks/heartbeat",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/tasks/morning-brief",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
+```
+*Note: Vercel automatically injects the `x-vercel-cron` header which our FastAPI app validates against `CRON_SECRET`.*
+
+## 4. Frontend Deployment
+
+1. Create a new Vercel project selecting the `frontend/` folder as the Root Directory.
+2. Framework Preset: **Vite**.
+3. **Environment Variable:** Set `VITE_API_URL` to the production URL of the backend you just deployed (e.g., `https://atlas-api.vercel.app`).
+4. Since it uses Vite, Vercel will auto-detect the `npm run build` commands and serve out the `dist/` directory.
 
 ---
 
-## 2. Frontend Deployment (React/Vite)
-
-### Setup
-1. Create a *second* project in Vercel.
-2. Link the same repository.
-3. **Important**: Set the **Root Directory** to `frontend`.
-4. Select **Vite** as the framework.
-
-### Environment Variables
-- `VITE_API_URL`: The URL of your **Backend** deployment (e.g., `https://atlas-zero-backend.vercel.app`).
-
----
-
-## 3. Real-time (SSE) Considerations
-Vercel's Serverless Functions have a maximum execution time (usually 10-60 seconds depending on your plan). 
-- The intelligence stream (`/stream/live`) will disconnect when the function times out.
-- The Atlas Zero frontend is built to automatically reconnect to the SSE stream. 
-- In the dashboard, you may occasionally see a "SSE connection error" in the console, but the UI will recover and fetch the latest state upon reconnection.
-
----
-
-## 4. Local Development
-To run the project locally with the new task endpoints:
-1. Start the backend: `uvicorn backend.api.main:app --reload`
-2. Start the frontend: `npm run dev` (inside `frontend/`)
-3. Test a task: `curl -H "X-Vercel-Cron: atlas_cron_secret_123" http://localhost:8000/tasks/sentinel`
+**You are live.** The frontend will automatically connect to the streaming API. Since you configured cron jobs on the backend, every 5 minutes your Supabase database will naturally accumulate new intelligence which immediately propagates to your deployed UI.

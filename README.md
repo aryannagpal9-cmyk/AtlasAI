@@ -1,85 +1,65 @@
-# Atlas Zero 📘
+# Atlas AI: The Proactive Advisory Engine
 
-> **The Cognitive Augmentation Layer for UK Financial Advisors.**
+Atlas is an autonomous, intelligent financial advisory layer built for the modern UK Wealth Manager. It transforms the advisory experience from *reactive query-answering* to *proactive hunch generation*. Atlas wakes up before the adviser does, monitors live markets, connects global events to individual client portfolios, and drafts communications before being asked.
 
-**Atlas Zero** is not a dashboard. It is a proactive UK Advisory Intelligence Layer designed for high-performance financial advisors. It continuously monitors client portfolios, UK market movements, and tax considerations to surface actionable insights before they are requested.
+## Features
 
----
+*   **Heartbeat Reasoning Loop**: A continuous, serverless cron-driven engine that reviews the entire client book.
+*   **Live Market & News MCP**: Integrates directly with DuckDuckGo for live news (powers the real-time News Ticker) and Yahoo Finance for live market indices.
+*   **Proactive Hunch Engine**: Analyzes market shifts, checks long-term client behavioral memory, and proactively highlights risks (e.g., *“James is about to panic over his Tech exposure”*).
+*   **Autonomous Draft Action**: Instantly generates empathetic, compliant client emails inside the dashboard discussion tab.
+*   **Serverless Ready**: 100% stateless backend designed to deploy instantly to Vercel with HTTP-triggered cron tasks.
 
-## 🏛 The Vision: Proactive by Design
-Modern advisory is reactive. Atlas Zero flips the script. By integrating real-time market data with deep client behavioural memory, Atlas detects risks and opportunities in the background, allowing advisors to focus on high-value human interactions.
+## Getting Started
 
-- **Live Market Sentinel**: 5-minute volatility monitoring for the FTSE 100/250 and UK sectors using real-time data.
-- **Proactive Heartbeat**: 30-minute full-book scans detecting portfolio drift, tax windows, and behavioural triggers.
-- **Contextual Interpretation**: Agent-led reasoning that synthesizes market news (DuckDuckGo) with client-specific historical context.
-- **Action-Ready Briefing**: Automated meeting prep and draft email generation, ready for advisor approval.
+### Prerequisites
 
----
+*   Python 3.10+
+*   Node.js 18+
+*   Supabase (PostgreSQL)
 
-## 🏗 High-Level Intelligence Loop
+### Environment Variables (.env)
+```env
+# Backend .env
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_service_role_key
+GROQ_API_KEY=your_groq_api_key
+CRON_SECRET=atlas_cron_secret_123
 
-```mermaid
-graph TD
-    subgraph Detection
-        S[Sentinel 5m] -->|Market Shock| H[Heartbeat]
-        T[Timer 30m] -->|Scheduled| H
-    end
-
-    subgraph Reasoning
-        H -->|Deterministic Rule| RC[Risk Classifier]
-        RC -->|Strategic Flag| IW[Intelligence Workflow]
-        IW -->|LLM Synthesis| AI[AI Interpretation]
-    end
-
-    subgraph Visualization
-        AI -->|SSE Update| UI[Unified Intelligence Stream]
-        UI -->|Advisor Action| Audit[Compliance Audit Log]
-    end
+# Frontend .env
+VITE_API_URL=http://localhost:8000
 ```
 
----
+### Local Development
 
-## 📂 Documentation Deep-Dive
-Explore the technical and conceptual foundation of Atlas Zero:
+1.  **Clone and install dependencies:**
+    ```bash
+    # Backend
+    cd backend
+    pip install -r requirements.txt
+    
+    # Frontend
+    cd frontend
+    npm install
+    ```
 
-- 📑 [**Product Requirements (PRD)**](./PRD.md): Vision, core principles, and advisor-in-the-loop workflows.
-- 🛠 [**Technical Requirements (TRD)**](./TRD.md): Stack, internal cycles, and agentic pipelines.
-- 🗺 [**Architecture Guide**](./Architecture.md): Deep dive into data loops and system components.
-- 🔌 [**API Reference**](./API.md): Documentation for the core intelligence endpoints.
+2.  **Start the services:**
+    ```bash
+    # Backend (Terminal 1)
+    export PYTHONPATH=$(pwd)
+    python -m backend.api.main
+    
+    # Frontend (Terminal 2)
+    cd frontend
+    npm run dev
+    ```
 
----
+## Architecture Map
 
-## 🛠 Quick Start
+*   `frontend/` - React, Framer Motion, Tailwind (Dashboard, Streaming UI, News Ticker)
+*   `backend/api/` - FastAPI routing and Serverless entry points
+*   `backend/mcp_server/` - Model Context Protocol Server (Live Market Data, Web Search, DB operations)
+*   `backend/reasoning/` - The Intelligence logic (Sentinel, Heartbeat, Chat Agent, Proactor)
+*   `backend/shared/` - Database connections, config, and logging
 
-### 1. Prerequisites
-- **Python 3.11+** & **Node.js 18+**
-- **Docker** & **Docker Compose**
-- **Supabase** (PostgreSQL + pgvector)
-- **Groq API Key** (for high-speed reasoning)
-- **OpenAI API Key** (for embeddings)
-
-### 2. Environment Setup
-Clone the repository and create a `.env` file in the root:
-```bash
-SUPABASE_URL=your_url
-SUPABASE_SERVICE_ROLE_KEY=your_key
-GROQ_API_KEY=your_key
-OPENAI_API_KEY=your_key
-```
-
-### 3. Launch with Docker
-```bash
-docker-compose up --build
-```
-
-The system will be available at:
-- **Frontend**: [http://localhost:3000](http://localhost:3000)
-- **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## 🛡 Project Identity
-Atlas Zero is built for **Adviser-in-the-Loop** workflows. It eliminates the "blind spot" of reactive monitoring without taking autonomy away from the professional. 
-
-**Deterministic Detection. AI Interpretation. Human Execution.**
-# AtlasAI
+For deeper dives, see the `Architecture.md` and `TRD.md` docs.

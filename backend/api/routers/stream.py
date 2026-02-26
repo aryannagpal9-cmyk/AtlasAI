@@ -297,51 +297,8 @@ async def get_stream(filter: str = "all", search: str = ""):
         logger.error(f"Error fetching risk events: {e}")
 
     # 4. Upcoming Meetings
-    if filter in ("all", "meeting"):
-        try:
-            brief_cols = "id, client_id, created_at, brief_json, meeting_timestamp"
-            briefs_resp = db_manager.client.table("meeting_briefs")\
-                .select(brief_cols).order("created_at", desc=True).limit(3).execute()
-                
-            for brief in (briefs_resp.data or []):
-                try:
-                    client = clients_map.get(brief["client_id"], {})
-                    client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}".strip() or "Unknown Client"
-                    
-                    if search and search.lower() not in client_name.lower():
-                        continue
-                    
-                    brief_data = brief.get("brief_json", {})
-                    
-                    drawer_data = await _build_meeting_drawer_fast(
-                        brief["client_id"], brief, brief_data, 
-                        portfolio_override=portfolios_map.get(brief["client_id"]),
-                        memory_override=memory_batch.get(brief["client_id"], [])
-                    )
-                    
-                    card = {
-                        "id": brief["id"],
-                        "type": "meeting_brief",
-                        "client": client_name,
-                        "chips": ["Meeting Prep", f"Risk: {brief_data.get('risk_alignment_notes', 'Aligned')}"],
-                        "drawerData": drawer_data,
-                        "isDraft": False,
-                        "client_id": brief["client_id"]
-                    }
-                    
-                    messages.append({
-                        "id": brief["id"],
-                        "type": "meeting",
-                        "timestamp": _format_time(brief.get("created_at")),
-                        "client": client_name,
-                        "text": brief_data.get("proactive_thought") or f"Upcoming brief for {client_name} generated.",
-                        "cards": [card],
-                        "timeAgo": _format_time(brief.get("created_at")),
-                    })
-                except Exception as item_err:
-                    logger.error(f"Error processing meeting brief {brief.get('id')}: {item_err}")
-        except Exception as e:
-            logger.error(f"Error fetching meeting briefs: {e}")
+    # Meeting briefs are now handled via risk_events with event_type='meeting_brief'
+    # Removed legacy separate fetch from meeting_briefs table.
 
     # 5. Heartbeat Logs — only on "all" tab
     if filter == "all":

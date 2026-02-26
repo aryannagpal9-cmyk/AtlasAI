@@ -24,11 +24,13 @@ class EventBroadcaster:
             self.queues.remove(queue)
             logger.info(f"SSE client disconnected. Active clients: {len(self.queues)}")
 
-    async def broadcast(self, message: str):
+    async def broadcast(self, message: dict | str):
         """Send a message to all connected clients."""
-        logger.debug(f"Broadcasting event: {message[:50]}...")
+        import json
+        msg_str = message if isinstance(message, str) else json.dumps(message)
+        logger.debug(f"Broadcasting event: {msg_str[:50]}...")
         for queue in self.queues:
-            await queue.put(message)
+            await queue.put(msg_str)
 
 # Global singleton
 broadcaster = EventBroadcaster()

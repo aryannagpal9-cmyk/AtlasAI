@@ -27,15 +27,33 @@ class PreMeetingBriefAgent:
         memories = await retrieve_relevant_memory(client_id, "meeting preparation")
         
         system_prompt = """
-        You are Atlas. Prepare a concise, professional meeting brief. 
-        Focus on priority strategic talking points.
-        Output JSON: { "client_summary": "string", "priority_strategic_talking_point": "string", "proactive_thought": "string (Opinionated opening gambit for the meeting)", ... }
+        You are Atlas, a Senior UK Financial Advisor. Prepare a highly detailed, comprehensive meeting brief. 
+        You must analyze the client's portfolio, tax position, and behavioral memory to provide everything an advisor might need for this meeting.
+        
+        Output MUST be valid JSON with this exact structure:
+        {
+          "client_summary": "string (Detailed summary of the client's current standing, risk tolerance, and key identifiers)",
+          "portfolio_performance": "string (How the portfolio is currently structured and performing)",
+          "priority_strategic_talking_point": "string (The #1 most important topic to cover)",
+          "proactive_thought": "string (High-level advisor-facing strategic summary for the meeting)",
+          "key_asset_allocation": ["string (bullet points of significant holdings)"],
+          "tax_opportunities": ["string (bullet points of ISA/Pension allowances remaining)"],
+          "recent_life_events_or_memories": ["string (Summarized from their behavioral memory)"],
+          "suggested_agenda_items": ["string"],
+          "compliance_reminders": ["string (e.g., 'Ensure KYC is updated', 'Confirm Risk Profile')"]
+        }
         """
         
         human_input = f"Client: {client_name}\nPortfolio: {json.dumps(portfolio)}\nTax: {json.dumps(tax)}\nMemory: {json.dumps(memories)}"
         
         response = await self.llm.ainvoke([SystemMessage(content=system_prompt), HumanMessage(content=human_input)])
-        clean = response.content.strip().strip("```json").strip("```")
+        content = response.content
+        import re
+        json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+        if json_match:
+            clean = json_match.group(1)
+        else:
+            clean = content.strip().strip("```json").strip("```")
         return json.loads(clean)
 
 class DraftingAgent:

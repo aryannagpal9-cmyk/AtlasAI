@@ -26,6 +26,10 @@ async def _build_drawer_data_fast(client_id: str, event: dict, client: dict, por
     classification = event.get("deterministic_classification") or {}
     interpretation = event.get("ai_interpretation") or {}
     
+    # Special: Delegate Meeting Briefs
+    if event_type == "meeting_brief":
+        return await _build_meeting_drawer_fast(client_id, event, interpretation, portfolio_override, memory_override)
+    
     is_macro = classification.get("is_macro_grouping", False)
     
     # Portfolio (Skip for macro group events)
@@ -210,12 +214,21 @@ async def _build_meeting_drawer_fast(client_id: str, meeting: dict, brief: dict,
         "portfolio": portfolio_items,
         "volatility": None,
         "volatilityLabel": "Within Mandate",
-        "behaviour": None, # Could be added if needed
+        "behaviour": None,
         "behaviourNote": brief.get("client_summary", ""),
         "memory": memory_items[:3],
         "trace": [
             f"Meeting scheduled: {_format_time(meeting.get('meeting_timestamp'), time_only=True)} today",
-            "Client brief auto-generated",
-            f"Risk alignment: {brief.get('risk_alignment_notes', 'within mandate')}",
-        ]
+            "Client brief auto-generated"
+        ],
+        "meetingContext": {
+            "portfolioPerformance": brief.get("portfolio_performance"),
+            "priorityTopic": brief.get("priority_strategic_talking_point"),
+            "keyAssets": brief.get("key_asset_allocation", []),
+            "taxes": brief.get("tax_opportunities", []),
+            "memories": brief.get("recent_life_events_or_memories", []),
+            "agenda": brief.get("suggested_agenda_items", []),
+            "compliance": brief.get("compliance_reminders", [])
+        },
+        "proactive_thought": brief.get("proactive_thought")
     }
