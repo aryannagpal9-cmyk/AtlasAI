@@ -1,5 +1,5 @@
 import pytest
-from backend.reasoning.uk_finance import UKFinanceLogic
+from reasoning.uk_finance import UKFinanceLogic
 
 def test_pension_annual_allowance_standard():
     # Income <= £260,000 should get £60,000

@@ -1,10 +1,10 @@
 import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from backend.reasoning.heartbeat import run_heartbeat
-from backend.reasoning.sentinel import run_sentinel
-from backend.reasoning.morning_brief import run_morning_analysis
-from backend.reasoning.proactor import run_proactive_briefing
-from backend.shared.logging import setup_logger
+from reasoning.heartbeat import run_heartbeat
+from reasoning.sentinel import run_sentinel
+from reasoning.morning_brief import run_morning_analysis
+from reasoning.proactor import run_proactive_briefing
+from shared.logging import setup_logger
 
 logger = setup_logger("scheduler")
 

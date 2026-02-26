@@ -1,7 +1,7 @@
-import yfinance as yf
+from yahooquery import Ticker
 from typing import Dict, Any, Optional
-from backend.shared.database import db_manager
-from backend.shared.logging import setup_logger
+from shared.database import db_manager
+from shared.logging import setup_logger
 
 logger = setup_logger("custodian")
 
@@ -9,7 +9,7 @@ class LiveCustodianClient:
     """
     Simulates a live integration with a custodial platform (e.g., Transact, Interactive Brokers).
     In a real system, this would make an authenticated API call to the custodian's /positions endpoint.
-    Here, we read the static base holdings from Supabase and use `yfinance` to simulate live market pricing
+    Here, we read the static base holdings from Supabase and use `yahooquery` to simulate live market pricing
     on those assets to generate a real-time portfolio snapshot.
     """
     
@@ -17,16 +17,16 @@ class LiveCustodianClient:
     def _get_live_price(ticker: str) -> Optional[float]:
         try:
             # First try as a standard ticker
-            tk = yf.Ticker(ticker)
+            tk = Ticker(ticker)
             hist = tk.history(period="1d")
-            if not hist.empty:
-                return float(hist["Close"].iloc[-1])
+            if not hist.empty and 'close' in hist.columns:
+                return float(hist["close"].iloc[-1])
             
             # If empty, try appending .L for London Stock Exchange
-            tk_l = yf.Ticker(f"{ticker}.L")
+            tk_l = Ticker(f"{ticker}.L")
             hist_l = tk_l.history(period="1d")
-            if not hist_l.empty:
-                return float(hist_l["Close"].iloc[-1])
+            if not hist_l.empty and 'close' in hist_l.columns:
+                return float(hist_l["close"].iloc[-1])
                 
         except Exception as e:
             logger.debug(f"Failed to fetch live price for {ticker}: {e}")

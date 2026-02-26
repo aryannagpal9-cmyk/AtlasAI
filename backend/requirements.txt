@@ -14,4 +14,4 @@ email-validator
 asyncio
 httpx
 duckduckgo-search>=6.3.0
-yfinance>=0.2.54
+yahooquery

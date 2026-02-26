@@ -4,7 +4,7 @@ import sys
 # Add backend to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from backend.shared.embeddings import get_embeddings_client
+from shared.embeddings import get_embeddings_client
 
 def verify_client():
     print("Checking embeddings client...")

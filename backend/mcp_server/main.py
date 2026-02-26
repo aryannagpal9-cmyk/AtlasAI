@@ -14,9 +14,9 @@ except ImportError:
     DDGS = None
 
 try:
-    import yfinance as yf
+    from yahooquery import Ticker
 except ImportError:
-    yf = None
+    Ticker = None
 
 mcp = FastMCP("AtlasZero")
 logger = setup_logger("mcp_server")
@@ -113,11 +113,11 @@ async def search_client_news(client_name: str, company: str = "", max_results: i
 @mcp.tool()
 async def fetch_live_market_data(query: Optional[str] = None) -> Dict[str, Any]:
     """
-    Fetches real-time UK market data using Yahoo Finance (yfinance).
+    Fetches real-time UK market data using yahooquery.
     Returns FTSE 100, FTSE 250, and sector-level signals based on proxy UK stocks.
     """
-    if not yf:
-        return {"error": "yfinance package not installed. Run: pip install yfinance"}
+    if not Ticker:
+        return {"error": "yahooquery package not installed. Run: pip install yahooquery"}
     
     try:
         market_data = {
@@ -130,16 +130,16 @@ async def fetch_live_market_data(query: Optional[str] = None) -> Dict[str, Any]:
         }
         
         # 1. FTSE 100
-        ftse_ticker = yf.Ticker("^FTSE")
+        ftse_ticker = Ticker("^FTSE")
         ftse_data = ftse_ticker.history(period="1d")
-        if not ftse_data.empty:
-            market_data["ftse_100_value"] = round(float(ftse_data["Close"].iloc[-1]), 2)
+        if not ftse_data.empty and 'close' in ftse_data.columns:
+            market_data["ftse_100_value"] = round(float(ftse_data["close"].iloc[-1]), 2)
             
         # 2. FTSE 250
-        ftse250_ticker = yf.Ticker("^FTMC")
+        ftse250_ticker = Ticker("^FTMC")
         ftse250_data = ftse250_ticker.history(period="1d")
-        if not ftse250_data.empty:
-            market_data["ftse_250_value"] = round(float(ftse250_data["Close"].iloc[-1]), 2)
+        if not ftse250_data.empty and 'close' in ftse250_data.columns:
+            market_data["ftse_250_value"] = round(float(ftse250_data["close"].iloc[-1]), 2)
             
         # 3. Sector proxies (UK specific)
         sector_proxies = {
@@ -153,11 +153,11 @@ async def fetch_live_market_data(query: Optional[str] = None) -> Dict[str, Any]:
             sector_perf = 0.0
             valid_tickers = 0
             for t in tickers:
-                tk = yf.Ticker(t)
+                tk = Ticker(t)
                 hist = tk.history(period="2d")
-                if len(hist) >= 2:
-                    prev_close = hist["Close"].iloc[-2]
-                    curr_close = hist["Close"].iloc[-1]
+                if not hist.empty and len(hist) >= 2:
+                    prev_close = hist["close"].iloc[-2]
+                    curr_close = hist["close"].iloc[-1]
                     pct_change = (curr_close - prev_close) / prev_close
                     sector_perf += pct_change
                     valid_tickers += 1

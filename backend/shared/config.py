@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     # App
     debug: bool = False
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str 
     
     # Internal
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
