@@ -1,0 +1,33 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "api/main.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "api/main.py"
+        }
+    ],
+    "crons": [
+        {
+            "path": "/tasks/sentinel",
+            "schedule": "*/5 * * * *"
+        },
+        {
+            "path": "/tasks/heartbeat",
+            "schedule": "0,30 * * * *"
+        },
+        {
+            "path": "/tasks/proactor",
+            "schedule": "*/15 * * * *"
+        },
+        {
+            "path": "/tasks/morning-brief",
+            "schedule": "30 7 * * *"
+        }
+    ]
+}
