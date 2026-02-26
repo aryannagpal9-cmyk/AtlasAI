@@ -7,17 +7,19 @@ logger = setup_logger("api.chat")
 router = APIRouter()
 chat_agent = ChatAgent()
 
+from fastapi.responses import StreamingResponse
+
 @router.post("/chat")
 async def chat(request: Request):
-    """Conversational endpoint for Atlas."""
+    """Conversational endpoint for Atlas with thinking stream."""
     data = await request.json()
     message = data.get("message")
     history = data.get("history", [])
+    context = data.get("context", {})
     
-    logger.info(f"Incoming chat message: {message[:50]}...")
-    response = await chat_agent.get_response(message, history)
+    logger.info(f"Streaming chat for: {message[:50]}...")
     
-    # Broadcast an update just in case the chat agent performed an action
-    await broadcaster.broadcast("update")
-    
-    return {"response": response}
+    return StreamingResponse(
+        chat_agent.stream_response(message, history, context),
+        media_type="text/event-stream"
+    )

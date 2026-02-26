@@ -151,7 +151,8 @@ async def get_stream(filter: str = "all", search: str = ""):
                     "isDraft": False,
                     "isMasterBrief": is_master,
                     "isMacroGrouping": is_macro,
-                    "client": client_name
+                    "client": client_name,
+                    "client_id": event["client_id"]
                 }
                 
                 draft_card = None
@@ -194,7 +195,7 @@ async def get_stream(filter: str = "all", search: str = ""):
                         "type": "morning_intelligence",
                         "timestamp": _format_time(event.get("created_at")),
                         "client": "Adviser Dashboard",
-                        "text": f"Market Intelligence ({len(critical_news)})",
+                        "text": cls.get("proactive_thought") or f"Market Intelligence ({len(critical_news)})",
                         "summary": summary_bullets,
                         "timeAgo": _format_time(event.get("created_at")),
                     }
@@ -244,7 +245,7 @@ async def get_stream(filter: str = "all", search: str = ""):
                     "type": etype,
                     "timestamp": _format_time(event.get("created_at")),
                     "client": item["client_name"],
-                    "text": _event_to_text(etype, item["client_name"], item["classification"], item["interpretation"]),
+                    "text": item["classification"].get("proactive_thought") or item["interpretation"].get("proactive_thought") or _event_to_text(etype, item["client_name"], item["classification"], item["interpretation"]),
                     "summary": _build_summary(item["interpretation"]),
                     "cards": [item["card"]] + ([item["draft_card"]] if item["draft_card"] else []),
                     "timeAgo": _format_time(event.get("created_at")),
@@ -266,6 +267,11 @@ async def get_stream(filter: str = "all", search: str = ""):
                 
                 summary_text = type_summary_labels.get(etype, f"Multiple {etype.replace('_', ' ').title()} events detected")
                 
+                # Try to use proactive voice from the first item
+                first_interp = first_item.get("interpretation") or {}
+                first_cls = first_item.get("classification") or {}
+                proactive = first_cls.get("proactive_thought") or first_interp.get("proactive_thought")
+                
                 cards = []
                 summaries = []
                 for itm in items:
@@ -281,7 +287,7 @@ async def get_stream(filter: str = "all", search: str = ""):
                     "type": etype,
                     "timestamp": _format_time(event.get("created_at")),
                     "client": "Strategic Alert",
-                    "text": summary_text,
+                    "text": proactive or summary_text,
                     "summary": summaries[:3],
                     "cards": cards,
                     "timeAgo": _format_time(event.get("created_at")),
@@ -320,6 +326,7 @@ async def get_stream(filter: str = "all", search: str = ""):
                         "chips": ["Meeting Prep", f"Risk: {brief_data.get('risk_alignment_notes', 'Aligned')}"],
                         "drawerData": drawer_data,
                         "isDraft": False,
+                        "client_id": brief["client_id"]
                     }
                     
                     messages.append({
@@ -327,7 +334,7 @@ async def get_stream(filter: str = "all", search: str = ""):
                         "type": "meeting",
                         "timestamp": _format_time(brief.get("created_at")),
                         "client": client_name,
-                        "text": f"Upcoming brief for {client_name} generated.",
+                        "text": brief_data.get("proactive_thought") or f"Upcoming brief for {client_name} generated.",
                         "cards": [card],
                         "timeAgo": _format_time(brief.get("created_at")),
                     })
@@ -356,8 +363,13 @@ async def get_stream(filter: str = "all", search: str = ""):
         except Exception as e:
             logger.error(f"Error fetching heartbeat logs: {e}")
 
-    # Sort chronologically
-    messages.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+    # Sort: morning_intelligence always on top, then chronologically
+    messages.sort(key=lambda x: (0 if x.get("type") == "morning_intelligence" else 1, -(hash(str(x.get("timestamp", ""))))), reverse=False)
+    # Stable secondary sort by timestamp (descending) within each priority group
+    morning = [m for m in messages if m.get("type") == "morning_intelligence"]
+    rest = [m for m in messages if m.get("type") != "morning_intelligence"]
+    rest.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+    messages = morning + rest
 
     # ─── BUILD DYNAMIC TABS ──────────────────────────────────
     TAB_LABELS = {
@@ -402,6 +414,9 @@ def _build_summary(interpretation: dict) -> list:
     return bullets
 
 
+# Global cache for live news ticker (5 minute TTL)
+_news_cache = {"timestamp": None, "data": []}
+
 @router.get("/live-strip")
 async def get_live_strip():
     """
@@ -433,12 +448,36 @@ async def get_live_strip():
         # Sector performance from snapshot
         sector_perf = snapshot.get("sector_performance") or {}
         
+        # Fetch live news from DuckDuckGo (cached for 5 minutes)
+        import time
+        global _news_cache
+        current_time = time.time()
+        
+        # Update cache if empty or older than 300 seconds (5 mins)
+        if _news_cache["timestamp"] is None or (current_time - _news_cache["timestamp"] > 300):
+            try:
+                from duckduckgo_search import DDGS
+                with DDGS() as ddgs:
+                    results = ddgs.news("UK financial markets today", max_results=5)
+                    # Extract just the headlines for the ticker
+                    _news_cache["data"] = [item.get("title") for item in results if item.get("title")]
+                    _news_cache["timestamp"] = current_time
+                    logger.info("Live news cache refreshed via DDGS")
+            except ImportError:
+                logger.error("duckduckgo_search not installed, cannot fetch live news")
+            except Exception as e:
+                logger.error(f"Error fetching live news via DDGS: {e}")
+                
+        # If cache is still empty (e.g. DDGS failed), provide a fallback
+        news_headlines = _news_cache["data"] if _news_cache["data"] else ["Live market news feed currently unavailable..."]
+        
         return {
             "ftse_100": ftse if ftse else None,
             "clients_impacted": impacted_clients,
             "open_risks": open_risks,
             "meetings_today": meetings_today,
-            "sectors": sector_perf
+            "sectors": sector_perf,
+            "news": news_headlines
         }
     except Exception as e:
         logger.error(f"Error fetching live strip: {e}")

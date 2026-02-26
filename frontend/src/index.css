@@ -238,6 +238,69 @@ body {
   padding-left: 40px;
 }
 
+/* ─── THOUGHT BLOCK (ChatGPT Style) ──────────────────────── */
+.thought-container {
+  margin-bottom: 12px;
+}
+
+.thought-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 0;
+  border-radius: 4px;
+  transition: all 0.2s;
+  user-select: none;
+  width: fit-content;
+}
+
+.thought-header:hover {
+  opacity: 0.8;
+}
+
+.thought-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #667085;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.thought-content {
+  border-left: 2px solid #eaecf0;
+  margin-left: 4px;
+  padding-left: 14px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.thought-item {
+  font-size: 12px;
+  color: #667085;
+  font-style: italic;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thought-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d0d5dd;
+}
+
+.thought-dot.active {
+  background: #1570ef;
+  box-shadow: 0 0 6px rgba(21, 112, 239, 0.4);
+}
+
 /* ─── CHAT BUBBLE ────────────────────────────────────────── */
 .atlas-bubble {
   display: flex;
@@ -275,6 +338,56 @@ body {
   line-height: 1.65;
   letter-spacing: -0.01em;
   margin: 0;
+}
+
+.markdown-content p {
+  margin-bottom: 12px;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-bottom: 12px;
+  padding-left: 20px;
+}
+
+.markdown-content li {
+  margin-bottom: 4px;
+}
+
+.markdown-content strong {
+  font-weight: 700;
+  color: #101828;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  font-weight: 700;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: #101828;
+}
+
+.markdown-content h1 {
+  font-size: 1.25rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.1rem;
+}
+
+.markdown-content h3 {
+  font-size: 1rem;
+}
+
+.markdown-content hr {
+  border: 0;
+  border-top: 1px solid #eaecf0;
+  margin: 16px 0;
 }
 
 .msg-meta {

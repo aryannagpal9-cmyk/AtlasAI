@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Shield, AlertTriangle, Calendar, Sparkles, MoreVertical,
-    Clock, Target, Activity, Search, Send, ChevronRight,
+    Clock, Target, Activity, Search, Send, ChevronRight, ChevronDown,
     Info, TrendingDown, Brain, Zap, FileText, MessageSquare,
     Users, BarChart3, Briefcase, Bell, RefreshCw
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import DetailPanel from './components/DetailPanel';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -25,6 +27,7 @@ const NAV_ITEMS = [
 // ─── MAIN APP ────────────────────────────────────────────────
 function App() {
     const [filter, setFilter] = useState('all');
+    const [activeNav, setActiveNav] = useState('Stream');
     const [selectedCard, setSelectedCard] = useState(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [streamMessages, setStreamMessages] = useState([]);
@@ -116,10 +119,33 @@ function App() {
         setIsDrawerOpen(true);
     };
 
+    // Risk resolution
+    const handleResolveRisk = async (riskId) => {
+        try {
+            await fetch(`${API_BASE}/risk-events/${riskId}/resolve`, { method: 'POST' });
+            setIsDrawerOpen(false);
+            fetchStream();
+        } catch (err) {
+            console.error('Failed to resolve risk:', err);
+        }
+    };
+
+    // Prepare action (draft generation)
+    const handlePrepareAction = async (riskId) => {
+        try {
+            await fetch(`${API_BASE}/risk-events/${riskId}/draft`, { method: 'POST' });
+            setIsDrawerOpen(false);
+            fetchStream();
+        } catch (err) {
+            console.error('Failed to prepare action:', err);
+        }
+    };
+
     // Draft action handlers
     const handleDraftApprove = async (draftId) => {
         try {
             await fetch(`${API_BASE}/drafts/${draftId}/approve`, { method: 'POST' });
+            setIsDrawerOpen(false);
             fetchStream(); // Refresh
         } catch (err) {
             console.error('Failed to approve draft:', err);
@@ -129,6 +155,7 @@ function App() {
     const handleDraftReject = async (draftId) => {
         try {
             await fetch(`${API_BASE}/drafts/${draftId}/reject`, { method: 'POST' });
+            setIsDrawerOpen(false);
             fetchStream();
         } catch (err) {
             console.error('Failed to reject draft:', err);
@@ -136,26 +163,74 @@ function App() {
     };
 
     // Chat handler
-    const handleChat = async () => {
-        if (!chatInput.trim()) return;
+    const handleChat = async (input, history = [], context = {}) => {
+        const text = (typeof input === 'string' ? input : chatInput).trim();
+        if (!text) return;
+
+        const chatId = `chat-${Date.now()}`;
+
+        // 1. Add initial placeholder message
+        setStreamMessages(prev => [{
+            id: chatId,
+            type: 'atlas',
+            text: '',
+            thoughts: [],
+            timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            cards: [],
+            isStreaming: true
+        }, ...prev]);
+        setChatInput('');
+
         try {
             const res = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: chatInput, history: [] })
+                body: JSON.stringify({ message: text, history, context })
             });
-            const data = await res.json();
-            // Inject Atlas response into stream
-            setStreamMessages(prev => [{
-                id: `chat-${Date.now()}`,
-                type: 'atlas',
-                text: data.response,
-                timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-                cards: []
-            }, ...prev]);
-            setChatInput('');
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let done = false;
+
+            while (!done) {
+                const { value, done: readerDone } = await reader.read();
+                done = readerDone;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    try {
+                        const data = JSON.parse(line);
+
+                        setStreamMessages(prev => prev.map(msg => {
+                            if (msg.id === chatId) {
+                                if (data.type === 'thought') {
+                                    return { ...msg, thoughts: [...(msg.thoughts || []), data.content] };
+                                } else if (data.type === 'answer') {
+                                    return { ...msg, text: msg.text + data.content };
+                                } else if (data.type === 'error') {
+                                    return { ...msg, text: msg.text + ` [Error: ${data.content}]` };
+                                }
+                            }
+                            return msg;
+                        }));
+                    } catch (e) {
+                        console.error('Failed to parse chunk:', line, e);
+                    }
+                }
+            }
+
+            // Mark as done streaming
+            setStreamMessages(prev => prev.map(msg =>
+                msg.id === chatId ? { ...msg, isStreaming: false } : msg
+            ));
+
         } catch (err) {
             console.error('Failed to send chat:', err);
+            setStreamMessages(prev => prev.map(msg =>
+                msg.id === chatId ? { ...msg, isStreaming: false, text: 'Failed to connect to Atlas.' } : msg
+            ));
         }
     };
 
@@ -200,7 +275,12 @@ function App() {
                 </div>
                 <nav className="sidebar-nav">
                     {NAV_ITEMS.map(item => (
-                        <button key={item.label} className={`sidebar-nav-item ${item.active ? 'active' : ''}`} title={item.label}>
+                        <button
+                            key={item.label}
+                            onClick={() => setActiveNav(item.label)}
+                            className={`sidebar-nav-item ${activeNav === item.label ? 'active' : ''}`}
+                            title={item.label}
+                        >
                             <item.icon size={18} />
                             <span className="sidebar-label">{item.label}</span>
                         </button>
@@ -252,6 +332,58 @@ function App() {
                         <StripMetric label="Meetings Today" value={liveStrip?.meetings_today ?? '—'} />
                     </motion.div>
                 </div>
+
+                {/* ─── NEWS TICKER ─────────────────────────────── */}
+                {liveStrip?.news && liveStrip.news.length > 0 && (
+                    <div style={{
+                        background: '#101828',
+                        color: 'white',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '6px 0',
+                        borderBottom: '1px solid #1d2939'
+                    }}>
+                        <div style={{
+                            padding: '0 16px',
+                            fontWeight: 900,
+                            fontSize: '9px',
+                            letterSpacing: '0.15em',
+                            textTransform: 'uppercase',
+                            color: '#12b76a',
+                            borderRight: '1px solid #344054',
+                            zIndex: 10,
+                            background: '#101828',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}>
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#12b76a] animate-pulse" />
+                            LIVE NEWS
+                        </div>
+                        <motion.div
+                            animate={{ x: [0, -1000] }}
+                            transition={{ duration: 45, repeat: Infinity, ease: "linear" }}
+                            style={{ display: 'flex', gap: '30px', paddingLeft: '20px' }}
+                        >
+                            {/* Duplicate news multiple times to create seamless scrolling */}
+                            {[...liveStrip.news, ...liveStrip.news, ...liveStrip.news].map((headline, idx) => (
+                                <span key={idx} style={{
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: '#d0d5dd',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '30px'
+                                }}>
+                                    {headline}
+                                    <span style={{ color: '#475467' }}>•</span>
+                                </span>
+                            ))}
+                        </motion.div>
+                    </div>
+                )}
 
                 {/* ─── FILTER STRIP ──────────────────────────── */}
                 <div className="filter-strip" style={{ height: 'auto', padding: '6px 20px', gap: '6px', flexDirection: 'column' }}>
@@ -370,7 +502,14 @@ function App() {
                         transition={{ type: 'spring', damping: 28, stiffness: 260 }}
                         className="sidebar-right"
                     >
-                        <DetailPanel context={selectedCard} onClose={() => setIsDrawerOpen(false)} />
+                        <DetailPanel
+                            context={selectedCard}
+                            onClose={() => setIsDrawerOpen(false)}
+                            onResolve={handleResolveRisk}
+                            onPrepareAction={handlePrepareAction}
+                            onSendChat={handleChat}
+                            onApproveDraft={handleDraftApprove}
+                        />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -399,6 +538,38 @@ const HeartbeatMessage = ({ msg }) => (
         <span className="text-[#b2ddff]">{msg.timestamp}</span>
     </motion.div>
 );
+const ExpandableThought = ({ thoughts }) => {
+    const [isExpanded, setIsExpanded] = useState(true);
+    if (!thoughts || thoughts.length === 0) return null;
+
+    return (
+        <div className="thought-container">
+            <div className="thought-header" onClick={() => setIsExpanded(!isExpanded)}>
+                <div className="thought-label">
+                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    Thought
+                </div>
+            </div>
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="thought-content"
+                    >
+                        {thoughts.map((thought, idx) => (
+                            <div key={idx} className="thought-item">
+                                <div className={`thought-dot ${idx === thoughts.length - 1 ? 'active' : ''}`} />
+                                <span>{thought}</span>
+                            </div>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
 
 const AtlasMessage = ({ msg, onCardClick, onApprove, onReject }) => (
     <motion.div
@@ -413,7 +584,12 @@ const AtlasMessage = ({ msg, onCardClick, onApprove, onReject }) => (
                 <Zap size={12} />
             </div>
             <div className="bubble-content">
-                <p className="atlas-text">{msg.text}</p>
+                <ExpandableThought thoughts={msg.thoughts} />
+                <div className="atlas-text markdown-content">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.text + (msg.isStreaming ? ' |' : '')}
+                    </ReactMarkdown>
+                </div>
 
                 {msg.summary && (
                     <div className="inline-summary">

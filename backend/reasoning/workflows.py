@@ -90,6 +90,7 @@ class IntelligenceWorkflow:
           "headline": "string (Personalized high-signal headline)",
           "consequence_if_ignored": "string",
           "behavioural_nuance": "string",
+          "proactive_thought": "string (Opinionated Situation-Belief-Action prose)",
           "suggested_action_type": "exactly 'draft_email' or 'dismiss'"
         }
         """
@@ -125,6 +126,7 @@ class IntelligenceWorkflow:
                 "headline": f"Risk detected: {risk_event.get('event_type')}",
                 "consequence_if_ignored": "Technical analysis required.",
                 "behavioural_nuance": "N/A",
+                "proactive_thought": f"The {risk_event.get('event_type')} event requires immediate attention. My analysis suggests this could impact client stability. Should we prepare a proactive update?",
                 "suggested_action_type": "dismiss",
                 "error": str(e)
             }
@@ -146,6 +148,7 @@ class IntelligenceWorkflow:
           "book_summary_card": { "title": "string", "bullets": ["string"] },
           "market_summary": "string",
           "critical_news": ["List of most urgent/critical news headlines"],
+          "proactive_thought": "string (Market-wide opinionated opening gambit)",
           "suggested_morning_actions": ["string"]
         }
         """

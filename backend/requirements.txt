@@ -9,11 +9,10 @@ langchain-core==0.3.83
 langchain-groq==0.3.8
 langchain-huggingface==0.3.1
 sentence-transformers
-apscheduler
 pydantic
 pydantic-settings
 email-validator
 asyncio
 httpx
-ddgs
+duckduckgo-search
 yfinance

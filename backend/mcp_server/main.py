@@ -227,12 +227,15 @@ async def get_sector_performance(query: Optional[str] = None) -> Dict[str, Any]:
 @mcp.tool()
 async def get_client_portfolio_structure(client_id: str) -> Dict[str, Any]:
     """Retrieves the portfolio structure for a specific client."""
+    logger.info(f"TOOL_CALL: get_client_portfolio_structure for {client_id}")
     try:
         response = db_manager.client.table("portfolios")\
             .select("*")\
             .eq("client_id", client_id)\
             .execute()
-        return response.data[0] if response.data else {"error": "Portfolio not found"}
+        result = response.data[0] if response.data else {"error": "Portfolio not found"}
+        logger.info(f"TOOL_RESULT: get_client_portfolio_structure success? {'error' not in result}")
+        return result
     except Exception as e:
         logger.error(f"Error fetching portfolio for {client_id}: {e}")
         return {"error": str(e)}
@@ -307,17 +310,16 @@ async def retrieve_relevant_memory(client_id: str, query: str) -> List[Dict[str,
         query_embedding = generate_embedding(query)
         
         # 2. Call the pgvector match_memory RPC
-        response = db_manager.client.rpc(
-            "match_memory",
-            {
-                "query_embedding": query_embedding,
-                "match_threshold": 0.5, # Exclude things that are completely unrelated
-                "match_count": 5,
-                "client_id_filter": client_id
-            }
-        ).execute()
-        
-        return response.data
+        params = {
+            "query_embedding": query_embedding,
+            "match_threshold": 0.5,
+            "match_count": 5
+        }
+        if client_id:
+            params["client_id_filter"] = client_id
+            
+        response = db_manager.client.rpc("match_memory", params).execute()
+        return response.data or []
     except Exception as e:
         logger.error(f"Error retrieving memory for {client_id}: {e}")
         return [{"error": str(e)}]

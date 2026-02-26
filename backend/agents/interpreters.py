@@ -29,7 +29,7 @@ class PreMeetingBriefAgent:
         system_prompt = """
         You are Atlas. Prepare a concise, professional meeting brief. 
         Focus on priority strategic talking points.
-        Output JSON: { "client_summary": "string", "priority_strategic_talking_point": "string", ... }
+        Output JSON: { "client_summary": "string", "priority_strategic_talking_point": "string", "proactive_thought": "string (Opinionated opening gambit for the meeting)", ... }
         """
         
         human_input = f"Client: {client_name}\nPortfolio: {json.dumps(portfolio)}\nTax: {json.dumps(tax)}\nMemory: {json.dumps(memories)}"
@@ -59,9 +59,37 @@ class MorningIntelligenceAgent:
         market_intel = await fetch_comprehensive_market_intel()
         return await intelligence_workflow.generate_morning_report(clients, market_intel)
 
-class MarketPulseAgent:
-    """Simplified pulse check."""
-    async def check_pulse(self, market_snapshot: dict) -> dict:
-        # For a truly deterministic workflow, we can use simple rules or a single LLM call
-        # For now, let's keep it very simple to reduce calls.
-        return {"is_interrupt": False, "reason": "Stable"}
+class ProactiveVoiceAgent:
+    """Agent that generates opinionated, proactive 'opening gambits' for Atlas."""
+    def __init__(self):
+        self.llm = ChatGroq(model=settings.groq_model, temperature=0.7, api_key=settings.groq_api_key)
+
+    async def generate_voice(self, context_summary: str, event_type: str) -> str:
+        """
+        Generates a proactive prose response.
+        Format: [Situation] -> [Belief] -> [Action/Question]
+        """
+        system_prompt = f"""
+        You are Atlas, a senior UK Financial Advisory proactive brain.
+        Your goal is to transform technical data into a proactive, intelligent opening gambit for an advisor.
+        
+        TONE: Professional, opinionated, proactive, concise.
+        FORMAT: A single short paragraph (max 3 sentences).
+        STRUCTURE: State the situation, your professional belief about it, and a clear suggested next step or question for the advisor.
+        
+        Context Type: {event_type}
+        """
+        
+        human_input = f"Data Context:\n{context_summary}"
+        
+        try:
+            response = await self.llm.ainvoke([
+                SystemMessage(content=system_prompt), 
+                HumanMessage(content=human_input)
+            ])
+            return response.content.strip()
+        except Exception as e:
+            from backend.shared.logging import setup_logger
+            logger = setup_logger("interpreters")
+            logger.error(f"Proactive voice generation failed: {e}")
+            return ""

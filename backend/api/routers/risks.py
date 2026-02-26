@@ -41,3 +41,20 @@ async def interpret_risk(event_id: str):
     db_manager.update("risk_events", event_id, {"ai_interpretation": interpretation})
     
     return interpretation
+
+@router.post("/risk-events/{event_id}/resolve")
+async def resolve_risk(event_id: str):
+    """Mark a risk event as resolved/dismissed."""
+    try:
+        db_manager.update("risk_events", event_id, {"status": "adviser_resolved", "resolved_at": "now()"})
+        # Log the resolution
+        db_manager.insert("action_logs", {
+            "entity_id": event_id,
+            "entity_type": "risk_event",
+            "decision": "resolved",
+            "action_type": "manual_resolution"
+        })
+        return {"status": "success", "message": f"Risk {event_id} resolved"}
+    except Exception as e:
+        logger.error(f"Error resolving risk {event_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

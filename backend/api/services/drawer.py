@@ -131,6 +131,9 @@ async def _build_drawer_data_fast(client_id: str, event: dict, client: dict, por
         "memory": memory_items[:3],
         "trace": trace,
         "processTrace": process_trace,
+        "proactive_thought": interpretation.get("proactive_thought") or classification.get("proactive_thought", ""),
+        "headline": interpretation.get("headline", ""),
+        "consequence": interpretation.get("consequence_if_ignored", ""),
     }
     
     if event_type == "market_interrupt":
